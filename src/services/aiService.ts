@@ -46,13 +46,26 @@ export const generateListingDescription = async (
       - Bachelor Allowed: ${metadata.isBachelorAllowed ? 'Yes' : 'No'}
       - Existing User Input/Voice Draft: "${metadata.description || ''}"
       
+      Instructions for Generation:
+      1. Write the title in a mix of English and Bengali (e.g., 'সুন্দর ৩ বেডের ফ্ল্যাট ভাড়া (Premium Apartment)') that is catchy and highlights features.
+      2. Write the description strictly in Markdown in Bengali language. Divide it into clear headings:
+         ### 🏠 বাসা বা ফ্ল্যাটের বিবরণ
+         (Highlight rooms, bathrooms, draft edits, etc.)
+         ### ✨ বিশেষ সুযোগ-সুবিধাসমূহ
+         (Mention utilities, water, electricity, safety, parking)
+         ### 📍 লোকেশন ও আশেপাশের বিশেষ স্থান
+         (Mention schools, main road access, markets based on address)
+         ### 📞 যোগাযোগের ঠিকানা
+         (Mention directly calling or messaging landlord via call/whatsapp buttons below)
+      3. Clean spelling, formatting, and grammar errors from the 'Existing User Input/Voice Draft'. Integrate its features cleanly.
+      
       Generate a response STRICTLY in JSON format matching this schema:
       {
-        "title": "An attractive, catchy listing title including location and key features (e.g., 'Spacious 3 BHK Family Apartment in Dhanmondi')",
-        "description": "A structured, detailed description written in markdown (in clear Bengali language) highlighting key features, ventilation, lighting, security, nearby landmarks, and amenities. Correct grammar and spelling of any voice draft, polishing it into highly professional copy.",
-        "tags": ["array", "of", "5-7", "relevant", "search", "tags", "in", "english", "and", "bengali"],
+        "title": "listing title...",
+        "description": "polished markdown description...",
+        "tags": ["tolet", "rent", "thakurgaon", ...],
         "extractedSpecs": {
-          "rentAmount": 12000 (extract this from the Voice Draft text if it wasn't specified in the rentAmount field, e.g. if the voice draft says 'ভাড়া ৪৭০০' extract 4700 as a number. Otherwise, omit this key),
+          "rentAmount": 4700 (extract this from the Voice Draft text if it wasn't specified in the rentAmount field, e.g. if the voice draft says 'ভাড়া ৪৭০০' extract 4700 as a number. Otherwise, omit this key),
           "bedrooms": 3 (extract bedroom count as number from the Voice Draft if not specified in metadata),
           "bathrooms": 2 (extract bathroom count as number from the Voice Draft if not specified in metadata)
         }
@@ -95,11 +108,71 @@ export const generateListingDescription = async (
     };
   } catch (error) {
     console.error('Gemini listing generator error:', error);
-    // Return high quality fallback description in Bengali
+    
+    // Offline/Fallback Parser to extract specs from voice text using Regex
+    let extRent = 0;
+    let extBed = 0;
+    let extBath = 0;
+    
+    const draftText = metadata.description || '';
+    
+    // Convert Bengali numerals to English numerals
+    const cleanText = draftText
+      .replace(/০/g, '0').replace(/১/g, '1').replace(/২/g, '2').replace(/৩/g, '3')
+      .replace(/৪/g, '4').replace(/৫/g, '5').replace(/৬/g, '6').replace(/৭/g, '7')
+      .replace(/৮/g, '8').replace(/৯/g, '9');
+      
+    // Regex for Rent (e.g. look for 4-5 digit numbers, or words near vara/rent/হলো)
+    const rentRegex = /(?:ভাড়া|ভাড়ায়|ভাড়া হলো|ভাড়া হচ্ছ|vara|rent|amount|taka|টাকা)\s*(?:হলো|is)?\s*(\d{4,5})/i;
+    const rentMatch = cleanText.match(rentRegex);
+    if (rentMatch) {
+      extRent = Number(rentMatch[1]);
+    } else {
+      const generalNum = cleanText.match(/\b(\d{4,5})\b/);
+      if (generalNum) {
+        extRent = Number(generalNum[1]);
+      }
+    }
+    
+    // Regex for Bedrooms (e.g. "তিন রুম", "২টি বেড", "3 room")
+    const bedRegex = /(\d+)\s*(?:রুম|বেড|room|bed)/i;
+    const bedMatch = cleanText.match(bedRegex);
+    if (bedMatch) {
+      extBed = Number(bedMatch[1]);
+    } else {
+      if (/তিন\s*রুম|তিনটি\s*রুম/i.test(cleanText)) extBed = 3;
+      else if (/দুই\s*রুম|two\s*room|দুইটি\s*রুম|দুইটা/i.test(cleanText)) extBed = 2;
+      else if (/এক\s*রুম|one\s*room|একটি\s*রুম/i.test(cleanText)) extBed = 1;
+    }
+    
+    // Regex for Bathrooms
+    const bathRegex = /(\d+)\s*(?:বাথরুম|বাথ|bath)/i;
+    const bathMatch = cleanText.match(bathRegex);
+    if (bathMatch) {
+      extBath = Number(bathMatch[1]);
+    } else {
+      if (/দুই\s*বাথরুম|two\s*bath|two\s*bathroom|দুইটি\s*বাথরুম|দুইটা/i.test(cleanText)) extBath = 2;
+      else if (/এক\s*বাথরুম|one\s*bath|one\s*bathroom|একটি\s*বাথরুম|একটা/i.test(cleanText)) extBath = 1;
+    }
+
+    const finalRent = extRent || metadata.rentAmount || 0;
+    const finalBed = extBed || (metadata.bedrooms && metadata.bedrooms !== 2 ? metadata.bedrooms : 2);
+    const finalBath = extBath || (metadata.bathrooms && metadata.bathrooms !== 2 ? metadata.bathrooms : 1);
+    const finalAddress = metadata.address || 'Thakurgaon Sadar, Thakurgaon';
+
+    // Construct a beautiful HTML/Markdown output dynamically
+    const fallbackTitle = metadata.title || `ঠাকুরগাঁও সদরে সুন্দর ${finalBed} বেডের ফ্ল্যাট ভাড়া (Premium Apartment)`;
+    const fallbackDescription = `### 🏠 ঠাকুরগাঁওয়ে সুপরিসর বাসা ভাড়া\n\n**ঠিকানা/লোকেশন:** ${finalAddress}\n\n**বাসার বিবরণ ও সুযোগ-সুবিধাসমূহ:**\nবাসাটিতে রয়েছে ${finalBed}টি চমৎকার শোবার ঘর (Bedrooms) এবং ${finalBath}টি বাথরুম। রুমগুলো অত্যন্ত আলো-বাতাসপূর্ণ এবং খোলামেলা পরিবেশে অবস্থিত। ফ্যামিলি বা ব্যাচেলরদের থাকার জন্য নিরিবিলি ও নিরাপদ পরিবেশ।\n\n- **মাসিক ভাড়া:** ৳${finalRent} BDT (আলোচনা সাপেক্ষ)\n- **অ্যাডভান্সড ডিপোজিট:** আলোচনা সাপেক্ষ\n- **ব্যাচেলর গ্রহণযোগ্যতা:** ${metadata.isBachelorAllowed ? 'হ্যাঁ' : 'না'}\n\n**আশেপাশের বিশেষ সুবিধা:**\n- ২৪ ঘণ্টা নিরবচ্ছিন্ন পানি ও বিদ্যুৎ সুবিধা\n- নিরাপদ পার্কিং স্পেস\n- মসজিদ, বাজার ও যাতায়াত ব্যবস্থার খুব কাছে\n\nভাড়া নিতে আগ্রহী হলে নিচের **সরাসরি কল** অথবা **হোয়াটসঅ্যাপ চ্যাট** বাটনে ক্লিক করে ল্যান্ডলর্ডের সাথে যোগাযোগ করুন।`;
+
     return {
-      title: metadata.title || `Spacious ${metadata.bedrooms} Beds Flat in ${metadata.address.split(',')[0]}`,
-      description: `### সুন্দর ও সুপরিসর ফ্ল্যাট ভাড়ার বিজ্ঞাপন\n\n**লোকেশন:** ${metadata.address}\n\n**বিবরণ:**\n${metadata.bedrooms}টি বেডরুম ও ${metadata.bathrooms}টি বাথরুম সহ একটি আকর্ষণীয় ${metadata.category} বাসা ভাড়া দেওয়া হবে। ফ্ল্যাটটিতে পর্যাপ্ত আলো-বাতাস এবং সার্বক্ষণিক নিরাপত্তা রয়েছে।\n\n- **ভাড়া:** ৳${metadata.rentAmount} প্রতি মাস\n- **ব্যাচেলর অনুমতি:** ${metadata.isBachelorAllowed ? 'হ্যাঁ' : 'না'}\n\nযোগাযোগের জন্য সরাসরি কল অথবা হোয়াটসঅ্যাপ বাটনে ক্লিক করুন।`,
-      tags: ['tolet', 'bangladesh', metadata.category.toLowerCase().replace(' ', '-')],
+      title: fallbackTitle,
+      description: fallbackDescription,
+      tags: ['tolet', 'thakurgaon', 'rent', 'family-flat'],
+      extractedSpecs: {
+        rentAmount: finalRent,
+        bedrooms: finalBed,
+        bathrooms: finalBath
+      }
     };
   }
 };
