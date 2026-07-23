@@ -8,21 +8,23 @@ const router = Router();
 // 1. AI Description and Title Generator
 router.post('/generate', authenticate, async (req: Request, res: Response) => {
   try {
-    const { title, rentAmount, category, bedrooms, bathrooms, address, isBachelorAllowed, imagesBase64 } = req.body;
+    const { title, rentAmount, category, bedrooms, bathrooms, address, isBachelorAllowed, imagesBase64, description } = req.body;
 
-    if (!rentAmount || !category || !bedrooms || !bathrooms || !address) {
+    // Strict validation ONLY when no description draft is provided to polish
+    if (!description && (!rentAmount || !category || !bedrooms || !bathrooms || !address)) {
       return res.status(400).json({ message: 'Missing required metadata for description generation' });
     }
 
     const aiResponse = await generateListingDescription(
       {
         title,
-        rentAmount: Number(rentAmount),
-        category,
-        bedrooms: Number(bedrooms),
-        bathrooms: Number(bathrooms),
-        address,
+        rentAmount: rentAmount ? Number(rentAmount) : 0,
+        category: category || 'Family',
+        bedrooms: bedrooms ? Number(bedrooms) : 0,
+        bathrooms: bathrooms ? Number(bathrooms) : 0,
+        address: address || '',
         isBachelorAllowed: isBachelorAllowed === true || isBachelorAllowed === 'true',
+        description,
       },
       imagesBase64
     );

@@ -20,9 +20,10 @@ export const generateListingDescription = async (
     bathrooms: number;
     address: string;
     isBachelorAllowed: boolean;
+    description?: string; // Optional user dictation draft
   },
   imagesBase64?: string[] // Optional base64 image strings
-): Promise<{ title: string; description: string; tags: string[] }> => {
+): Promise<{ title: string; description: string; tags: string[]; extractedSpecs?: { rentAmount?: number; bedrooms?: number; bathrooms?: number } }> => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'your_gemini_api_key_here') {
@@ -33,22 +34,28 @@ export const generateListingDescription = async (
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
-      You are an expert real estate copywriter in Bangladesh. Based on the following property details and uploaded images, generate a high-converting listing.
+      You are an expert real estate copywriter in Bangladesh. Based on the following property details, draft description (which might be raw speech-to-text text in Bangla/English), and uploaded images, generate a high-converting listing.
       
       Property Info:
       - Initial Title: "${metadata.title || ''}"
-      - Rent Amount: ${metadata.rentAmount} BDT
+      - Rent Amount: ${metadata.rentAmount || 'Not specified'} BDT
       - Category: ${metadata.category}
-      - Bedrooms: ${metadata.bedrooms}
-      - Bathrooms: ${metadata.bathrooms}
-      - Address/Location: "${metadata.address}"
+      - Bedrooms: ${metadata.bedrooms || 'Not specified'}
+      - Bathrooms: ${metadata.bathrooms || 'Not specified'}
+      - Address/Location: "${metadata.address || 'Not specified'}"
       - Bachelor Allowed: ${metadata.isBachelorAllowed ? 'Yes' : 'No'}
+      - Existing User Input/Voice Draft: "${metadata.description || ''}"
       
       Generate a response STRICTLY in JSON format matching this schema:
       {
         "title": "An attractive, catchy listing title including location and key features (e.g., 'Spacious 3 BHK Family Apartment in Dhanmondi')",
-        "description": "A structured, detailed description written in markdown (in clear Bengali language) highlighting key features, ventilation, lighting, security, nearby landmarks, and amenities. Keep it engaging and professional.",
-        "tags": ["array", "of", "5-7", "relevant", "search", "tags", "in", "english", "and", "bengali"]
+        "description": "A structured, detailed description written in markdown (in clear Bengali language) highlighting key features, ventilation, lighting, security, nearby landmarks, and amenities. Correct grammar and spelling of any voice draft, polishing it into highly professional copy.",
+        "tags": ["array", "of", "5-7", "relevant", "search", "tags", "in", "english", "and", "bengali"],
+        "extractedSpecs": {
+          "rentAmount": 12000 (extract this from the Voice Draft text if it wasn't specified in the rentAmount field, e.g. if the voice draft says 'ভাড়া ৪৭০০' extract 4700 as a number. Otherwise, omit this key),
+          "bedrooms": 3 (extract bedroom count as number from the Voice Draft if not specified in metadata),
+          "bathrooms": 2 (extract bathroom count as number from the Voice Draft if not specified in metadata)
+        }
       }
 
       Do not wrap the response in markdown blocks like \`\`\`json. Return only raw, parseable JSON.
@@ -84,6 +91,7 @@ export const generateListingDescription = async (
       title: parsed.title || metadata.title || 'Premium Rental Property',
       description: parsed.description || 'No description generated.',
       tags: parsed.tags || ['tolet', 'dhaka', 'rent'],
+      extractedSpecs: parsed.extractedSpecs || undefined,
     };
   } catch (error) {
     console.error('Gemini listing generator error:', error);
