@@ -36,6 +36,76 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'RentWise AI Server is running smoothly' });
 });
 
+// Root Welcome Page
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>RentWise AI Server</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          margin: 0;
+          background-color: #0b0f19;
+          color: #f8fafc;
+          text-align: center;
+          padding: 20px;
+        }
+        .container {
+          max-width: 500px;
+          border: 1px solid #1f2937;
+          background-color: #111827;
+          padding: 40px;
+          border-radius: 16px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+          color: #14b8a6;
+          margin-top: 0;
+          font-size: 28px;
+          font-weight: 800;
+        }
+        p {
+          color: #94a3b8;
+          font-size: 15px;
+          line-height: 1.6;
+          margin-bottom: 30px;
+        }
+        .btn {
+          display: inline-block;
+          background-color: #0f766e;
+          color: #ffffff;
+          padding: 12px 24px;
+          border-radius: 10px;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 14px;
+          transition: background-color 0.2s ease;
+        }
+        .btn:hover {
+          background-color: #115e59;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>RentWise AI Server 🔌</h1>
+        <p>The Express API backend is running successfully and is connected to the MongoDB Atlas cluster.</p>
+        <a href="http://localhost:3000" class="btn">Go to RentWise AI Client (Port 3000)</a>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Register Api Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
