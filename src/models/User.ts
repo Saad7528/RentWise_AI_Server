@@ -6,6 +6,7 @@ export interface IUser extends Document {
   emailVerified: boolean;
   image?: string;
   phone?: string;
+  address?: string;
   role: 'USER' | 'ADMIN';
   isBlocked: boolean;
   createdAt: Date;
@@ -19,6 +20,7 @@ const userSchema = new Schema<IUser>(
     emailVerified: { type: Boolean, default: false },
     image: { type: String },
     phone: { type: String, default: '' },
+    address: { type: String, default: '' },
     role: { type: String, enum: ['USER', 'ADMIN'], default: 'USER' },
     isBlocked: { type: Boolean, default: false },
   },

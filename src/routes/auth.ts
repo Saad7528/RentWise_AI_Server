@@ -11,6 +11,37 @@ router.get('/me', authenticate, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
 
+// Update user profile (Name, Phone, Address, Image)
+router.put('/update', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { name, phone, address, image } = req.body;
+    const user = req.user!;
+
+    if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (image !== undefined) user.image = image;
+
+    await user.save();
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id || user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+        phone: user.phone,
+        address: user.address,
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+});
+
 // Demo login handler (Landlord / Tenant)
 router.post('/demo', async (req: Request, res: Response) => {
   try {
@@ -92,7 +123,8 @@ router.post('/demo', async (req: Request, res: Response) => {
         email: user.email,
         role: user.role,
         image: user.image,
-        phone: user.phone
+        phone: user.phone,
+        address: user.address || '',
       }
     });
   } catch (error) {
