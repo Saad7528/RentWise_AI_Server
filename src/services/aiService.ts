@@ -241,8 +241,37 @@ export const parseNaturalLanguageQuery = async (
     
     // Simple rules-based fallback parser
     const lower = queryText.toLowerCase();
+    const cleanText = queryText.replace(/০/g, '0').replace(/১/g, '1').replace(/২/g, '2').replace(/৩/g, '3')
+      .replace(/৪/g, '4').replace(/৫/g, '5').replace(/৬/g, '6').replace(/৭/g, '7')
+      .replace(/৮/g, '8').replace(/৯/g, '9');
+
     const filters: any = {};
     let reasoning = 'আপনার অনুসন্ধান অনুযায়ী প্রোপার্টি খোঁজা হচ্ছে।';
+
+    // Translation mapping for neighborhood search terms
+    const locationTranslationMap: { [key: string]: string } = {
+      'মাস্টারপাড়া': 'Masterpara',
+      'মাস্টারপাড়া': 'Masterpara',
+      'মাস্টারপাড়': 'Masterpara',
+      'মাস্টার': 'Masterpara',
+      'সরকারপাড়া': 'Sarkarpara',
+      'সরকারপাড়া': 'Sarkarpara',
+      'সরকারপাড়': 'Sarkarpara',
+      'সরকার': 'Sarkarpara',
+      'গোবিন্দনগর': 'Gobindanagar',
+      'বশিরপাড়া': 'Basirpara',
+      'বশিরপাড়া': 'Basirpara',
+      'বশিরপাড়': 'Basirpara',
+      'বশির': 'Basirpara',
+      'হাজীপাড়া': 'Hazipara',
+      'হাজীপাড়া': 'Hazipara',
+      'হাজী': 'Hazipara',
+      'ঠাকুরগাঁও': 'Thakurgaon',
+      'ধানমন্ডি': 'Dhanmondi',
+      'মিরপুর': 'Mirpur',
+      'উত্তরা': 'Uttara',
+      'হাজারীবাগ': 'Hazaribagh'
+    };
 
     // Check pre-configured locations first
     if (lower.includes('dhanmondi') || lower.includes('ধানমন্ডি')) {
@@ -278,11 +307,39 @@ export const parseNaturalLanguageQuery = async (
       }
       
       if (extractedLoc) {
-        // Strip locative case suffixes like "ে", "তে", "রে" (e.g. হাজারীবাগে -> হাজারীবাগ)
-        const cleanLoc = extractedLoc.replace(/(?:ে|তে|রে)$/, '');
-        filters.address = cleanLoc;
-        reasoning = `আমি আপনার জন্য ${cleanLoc} এলাকার বাসাগুলো খুঁজছি।`;
+        // Strip locative case suffixes like "ে", "তে", "রে", "ায়"
+        const cleanLoc = extractedLoc.replace(/(?:ে|তে|রে|ায়)$/, '');
+        
+        // Translate neighborhood from Bengali to English if exists in translation map
+        if (locationTranslationMap[cleanLoc]) {
+          filters.address = locationTranslationMap[cleanLoc];
+          reasoning = `আমি আপনার জন্য ${cleanLoc} এলাকার বাসাগুলো খুঁজছি।`;
+        } else {
+          filters.address = cleanLoc;
+          reasoning = `আমি আপনার জন্য ${cleanLoc} এলাকার বাসাগুলো খুঁজছি।`;
+        }
       }
+    }
+
+    // Extract Bedrooms (e.g. "তিনটি বেডরুম", "3 bedrooms", "তিনটি রুম")
+    const bedRegex = /(\d+)\s*(?:টি\s*)?(?:বেডরুম|বেড|room|bed)/i;
+    const bedMatch = cleanText.match(bedRegex);
+    if (bedMatch) {
+      filters.bedrooms = Number(bedMatch[1]);
+    } else {
+      if (/তিনটি\s*বেডরুম|তিনটি\s*বেড|তিনটি\s*রুম|তিন\s*বেডরুম|তিন\s*রুম|তিন\s*বেড/i.test(cleanText)) filters.bedrooms = 3;
+      else if (/দুটি\s*বেডরুম|দুইটি\s*বেডরুম|দুটি\s*বেড|দুইটি\s*বেড|দুটি\s*রুম|দুইটি\s*রুম|দুই\s*বেড/i.test(cleanText)) filters.bedrooms = 2;
+      else if (/একটি\s*বেডরুম|একটি\s*বেড|একটি\s*রুম|এক\s*বেড/i.test(cleanText)) filters.bedrooms = 1;
+    }
+
+    // Extract Bathrooms (e.g. "দুটি বাথরুম", "2 bathrooms", "দুইটি বাথ")
+    const bathRegex = /(\d+)\s*(?:টি\s*)?(?:বাথরুম|বাথ|bath)/i;
+    const bathMatch = cleanText.match(bathRegex);
+    if (bathMatch) {
+      filters.bathrooms = Number(bathMatch[1]);
+    } else {
+      if (/দুটি\s*বাথরুম|two\s*bath|দুইটি\s*বাথরুম|দুটি\s*বাথ|দুইটি\s*বাথ|দুই\s*বাথ|দুই\s*বাথরুম/i.test(cleanText)) filters.bathrooms = 2;
+      else if (/একটি\s*বাথরুম|একটি\s*বাথ|এক\s*বাথরুম|এক\s*বাথ/i.test(cleanText)) filters.bathrooms = 1;
     }
 
     if (lower.includes('bachelor') || lower.includes('ব্যাচেলর')) {
