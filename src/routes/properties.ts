@@ -17,11 +17,34 @@ router.get('/', async (req: Request, res: Response) => {
       bathrooms,
       isBachelorAllowed,
       sort,
+      lat,
+      lng,
+      radius,
+      district,
+      thana,
+      neighborhood,
       page = 1,
       limit = 12,
     } = req.query;
 
     const query: any = { status: 'APPROVED' };
+
+    // Cascading geographical location filters
+    const addressFilters: any[] = [];
+    if (district) {
+      addressFilters.push({ address: { $regex: String(district), $options: 'i' } });
+    }
+    if (thana) {
+      addressFilters.push({ address: { $regex: String(thana), $options: 'i' } });
+    }
+    if (neighborhood) {
+      addressFilters.push({ address: { $regex: String(neighborhood), $options: 'i' } });
+    }
+
+    if (addressFilters.length > 0) {
+      query.$and = query.$and || [];
+      query.$and.push(...addressFilters);
+    }
 
     // Text search (Title or Address)
     if (search) {
@@ -30,6 +53,19 @@ router.get('/', async (req: Request, res: Response) => {
         { address: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
       ];
+    }
+
+    // Geospatial proximity search (if lat/lng pinned coordinates provided)
+    if (lat && lng) {
+      query.location = {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [Number(lng), Number(lat)],
+          },
+          $maxDistance: Number(radius) || 10000, // default to 10km if radius not specified
+        },
+      };
     }
 
     // Category filter
@@ -71,8 +107,13 @@ router.get('/', async (req: Request, res: Response) => {
     const limitNum = Number(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    const properties = await Property.find(query)
-      .sort(sortOption)
+    // Apply sorting only if not doing geospatial $near query (as $near auto-sorts by proximity)
+    let dbQuery = Property.find(query);
+    if (!lat || !lng) {
+      dbQuery = dbQuery.sort(sortOption);
+    }
+
+    const properties = await dbQuery
       .skip(skip)
       .limit(limitNum);
 
