@@ -111,5 +111,14 @@ npm run dev
 ---
 
 ## 👥 Developer & Author
-* **Developer:** [S. M. Amirul Islam Saad](https://github.com/Saad7528)
+
+<p align="left">
+  <a href="https://github.com/Saad7528" target="_blank">
+    <img src="https://img.shields.io/badge/Developer-S.%20M.%20Amirul%20Islam%20Saad-teal?style=for-the-badge&logo=github&logoColor=white" alt="Developer Profile" />
+  </a>
+  <a href="https://saad-portfolio-eta-three.vercel.app" target="_blank">
+    <img src="https://img.shields.io/badge/Portfolio-Visit%20Website-rose?style=for-the-badge&logo=vercel&logoColor=white" alt="Portfolio Website" />
+  </a>
+</p>
+
 * **Project Role:** Lead Full Stack Developer
