@@ -42,6 +42,92 @@ router.put('/update', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+// Google OAuth verification & login/registration flow
+router.post('/google', async (req: Request, res: Response) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: 'Missing Google credential token' });
+    }
+
+    // Decode JWT payload (middle part of the JWT token)
+    const parts = credential.split('.');
+    if (parts.length !== 3) {
+      return res.status(400).json({ message: 'Invalid JWT structure' });
+    }
+
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+
+    // Validate Issuer & Audience
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '686079964181-sd96omj0gqdj9b70ccm6udgtd92hjvk2.apps.googleusercontent.com';
+    if (!payload.iss.includes('accounts.google.com') || payload.aud !== GOOGLE_CLIENT_ID) {
+      return res.status(400).json({ message: 'Invalid token audience or issuer' });
+    }
+
+    const { email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email not provided by Google' });
+    }
+
+    // 1. Find or create the user in the database
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        emailVerified: true,
+        image: picture,
+        phone: '',
+        role: 'USER',
+        isBlocked: false,
+      });
+    }
+
+    // 2. Generate a session token compatible with Better Auth
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const sessionId = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiration
+
+    // 3. Create a Session in the database
+    await Session.create({
+      id: sessionId,
+      userId: user.id || user._id.toString(),
+      token: sessionToken,
+      expiresAt,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] || 'Mock Agent',
+    });
+
+    // 4. Set the Better Auth cookie
+    res.cookie('better-auth.session_token', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      expires: expiresAt,
+      path: '/'
+    });
+
+    res.json({
+      message: 'Google login successful',
+      token: sessionToken,
+      user: {
+        id: user.id || user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+        phone: user.phone,
+        address: user.address || ''
+      }
+    });
+  } catch (error) {
+    console.error('Google OAuth backend error:', error);
+    res.status(500).json({ message: 'Failed to process Google sign-in' });
+  }
+});
+
 // Demo login handler (Landlord / Tenant)
 router.post('/demo', async (req: Request, res: Response) => {
   try {
