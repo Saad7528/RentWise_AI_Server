@@ -107,3 +107,9 @@ npm install
 npm run dev
 ```
 *The client website will run at `http://localhost:3000`.*
+
+---
+
+## 👥 Developer & Author
+* **Developer:** [S. M. Amirul Islam Saad](https://github.com/Saad7528)
+* **Project Role:** Lead Full Stack Developer
