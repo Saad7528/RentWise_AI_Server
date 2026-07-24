@@ -117,7 +117,17 @@ router.get('/', async (req: Request, res: Response) => {
       .skip(skip)
       .limit(limitNum);
 
-    const total = await Property.countDocuments(query);
+    const countQuery = { ...query };
+    if (countQuery.location && countQuery.location.$near) {
+      const rad = (Number(radius) || 10000) / 6378100; // convert radius to radians for earth sphere
+      countQuery.location = {
+        $geoWithin: {
+          $centerSphere: [ [ Number(lng), Number(lat) ], rad ]
+        }
+      };
+    }
+
+    const total = await Property.countDocuments(countQuery);
 
     res.json({
       properties,
