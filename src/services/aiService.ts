@@ -238,11 +238,13 @@ export const parseNaturalLanguageQuery = async (
     };
   } catch (error) {
     console.error('Gemini recommendation parser error:', error);
+    
     // Simple rules-based fallback parser
     const lower = queryText.toLowerCase();
     const filters: any = {};
     let reasoning = 'আপনার অনুসন্ধান অনুযায়ী প্রোপার্টি খোঁজা হচ্ছে।';
 
+    // Check pre-configured locations first
     if (lower.includes('dhanmondi') || lower.includes('ধানমন্ডি')) {
       filters.address = 'Dhanmondi';
       reasoning = 'আমি আপনার জন্য ধানমন্ডি এলাকার বাসাগুলো খুঁজছি।';
@@ -252,6 +254,35 @@ export const parseNaturalLanguageQuery = async (
     } else if (lower.includes('uttara') || lower.includes('উত্তরা')) {
       filters.address = 'Uttara';
       reasoning = 'আমি আপনার জন্য উত্তরা এলাকার বাসাগুলো খুঁজছি।';
+    } else {
+      // Dynamic location extraction using stop-words
+      const stopWords = [
+        'বাসা', 'ভাড়া', 'ভাড়ায়', 'ফ্ল্যাট', 'খুঁজছি', 'চাই', 'গ্যাস', 'বিদ্যুৎ', 'পানি', 'সুবিধা', 'টাকা', 'হাজার', 'হাজারের', 
+        'under', 'rent', 'flat', 'apartment', 'house', 'room', 'need', 'want', 'with', 'gas', 'water', 'গ্যাসের', 'সুবিধাসহ',
+        'এআইকে', 'বলুন', 'এআই', 'ask', 'ai', 'show', 'find', 'search', 'for'
+      ];
+      // Clean query into words
+      const words = lower.split(/\s+/).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ''));
+      let extractedLoc = '';
+      
+      for (const word of words) {
+        if (
+          word.length > 2 && 
+          !stopWords.includes(word) && 
+          isNaN(Number(word)) && 
+          !['bachelor', 'family', 'sublet', 'hostel', 'bachelors', 'families'].includes(word)
+        ) {
+          extractedLoc = word;
+          break;
+        }
+      }
+      
+      if (extractedLoc) {
+        // Strip locative case suffixes like "ে", "তে", "রে" (e.g. হাজারীবাগে -> হাজারীবাগ)
+        const cleanLoc = extractedLoc.replace(/(?:ে|তে|রে)$/, '');
+        filters.address = cleanLoc;
+        reasoning = `আমি আপনার জন্য ${cleanLoc} এলাকার বাসাগুলো খুঁজছি।`;
+      }
     }
 
     if (lower.includes('bachelor') || lower.includes('ব্যাচেলর')) {
