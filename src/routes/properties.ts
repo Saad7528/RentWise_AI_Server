@@ -242,6 +242,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       longitude,
       images,
       contactPhone,
+      amenities,
     } = req.body;
 
     // Simple validation
@@ -276,6 +277,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       status,
       landlordId,
       contactPhone,
+      amenities: Array.isArray(amenities) ? amenities : [],
     });
 
     res.status(201).json({
@@ -319,6 +321,7 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
       images,
       contactPhone,
       status,
+      amenities,
     } = req.body;
 
     const updateData: any = {};
@@ -339,6 +342,7 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
     }
     if (images !== undefined) updateData.images = images;
     if (contactPhone !== undefined) updateData.contactPhone = contactPhone;
+    if (amenities !== undefined) updateData.amenities = Array.isArray(amenities) ? amenities : [];
 
     // Landlords can mark as RENTED or PENDING (if updating), Admins can change status directly
     if (status !== undefined) {

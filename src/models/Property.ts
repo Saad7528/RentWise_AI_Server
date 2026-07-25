@@ -10,6 +10,7 @@ export interface IProperty extends Document {
   bathrooms: number;
   isBachelorAllowed: boolean;
   address: string;
+  amenities: string[];
   location: {
     type: 'Point';
     coordinates: [number, number]; // [longitude, latitude]
@@ -37,6 +38,7 @@ const propertySchema = new Schema<IProperty>(
     bathrooms: { type: Number, required: true },
     isBachelorAllowed: { type: Boolean, default: false },
     address: { type: String, required: true },
+    amenities: { type: [String], default: [] },
     location: {
       type: {
         type: String,
