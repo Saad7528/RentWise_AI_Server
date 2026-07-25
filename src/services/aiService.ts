@@ -288,7 +288,8 @@ export const parseNaturalLanguageQuery = async (
       const stopWords = [
         'বাসা', 'ভাড়া', 'ভাড়ায়', 'ফ্ল্যাট', 'খুঁজছি', 'চাই', 'গ্যাস', 'বিদ্যুৎ', 'পানি', 'সুবিধা', 'টাকা', 'হাজার', 'হাজারের', 
         'under', 'rent', 'flat', 'apartment', 'house', 'room', 'need', 'want', 'with', 'gas', 'water', 'গ্যাসের', 'সুবিধাসহ',
-        'এআইকে', 'বলুন', 'এআই', 'ask', 'ai', 'show', 'find', 'search', 'for'
+        'এআইকে', 'বলুন', 'এআই', 'ask', 'ai', 'show', 'find', 'search', 'for',
+        'বেডরুম', 'বেড', 'বাথরুম', 'বাথ', 'ফ্যামিলি', 'ফ্যামিলি', 'ব্যাচেলর', 'ব্যাচেলর', 'ব্যাচেলরদের'
       ];
       // Clean query into words
       const words = lower.split(/\s+/).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ''));
