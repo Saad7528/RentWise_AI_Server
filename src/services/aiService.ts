@@ -10,7 +10,7 @@ const getGeminiClient = () => {
   return new GoogleGenerativeAI(apiKey);
 };
 
-// Safe wrapper for Gemini 1.5 Flash Model
+// Safe wrapper for Gemini 3.5 Flash Model
 export const generateListingDescription = async (
   metadata: {
     title?: string;
@@ -21,6 +21,7 @@ export const generateListingDescription = async (
     address: string;
     isBachelorAllowed: boolean;
     description?: string; // Optional user dictation draft
+    amenities?: string[]; // Selected amenities
   },
   imagesBase64?: string[] // Optional base64 image strings
 ): Promise<{ title: string; description: string; tags: string[]; extractedSpecs?: { rentAmount?: number; bedrooms?: number; bathrooms?: number } }> => {
@@ -31,7 +32,7 @@ export const generateListingDescription = async (
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = `
       You are an expert real estate copywriter in Bangladesh. Based on the following property details, draft description (which might be raw speech-to-text text in Bangla/English), and uploaded images, generate a high-converting listing.
@@ -44,6 +45,7 @@ export const generateListingDescription = async (
       - Bathrooms: ${metadata.bathrooms || 'Not specified'}
       - Address/Location: "${metadata.address || 'Not specified'}"
       - Bachelor Allowed: ${metadata.isBachelorAllowed ? 'Yes' : 'No'}
+      - Selected Amenities: ${metadata.amenities && metadata.amenities.length > 0 ? metadata.amenities.join(', ') : 'None specified'}
       - Existing User Input/Voice Draft: "${metadata.description || ''}"
       
       Instructions for Generation:
@@ -52,7 +54,7 @@ export const generateListingDescription = async (
          ### 🏠 বাসা বা ফ্ল্যাটের বিবরণ
          (Highlight rooms, bathrooms, draft edits, etc.)
          ### ✨ বিশেষ সুযোগ-সুবিধাসমূহ
-         (Mention utilities, water, electricity, safety, parking)
+         (Mention utilities, water, electricity, safety, parking, and other amenities)
          ### 📍 লোকেশন ও আশেপাশের বিশেষ স্থান
          (Mention schools, main road access, markets based on address)
          ### 📞 যোগাযোগের ঠিকানা
@@ -117,10 +119,34 @@ export const generateListingDescription = async (
     const draftText = metadata.description || '';
     
     // Convert Bengali numerals to English numerals
-    const cleanText = draftText
+    let cleanText = draftText
       .replace(/০/g, '0').replace(/১/g, '1').replace(/২/g, '2').replace(/৩/g, '3')
       .replace(/৪/g, '4').replace(/৫/g, '5').replace(/৬/g, '6').replace(/৭/g, '7')
       .replace(/৮/g, '8').replace(/৯/g, '9');
+
+    // Mapping of Bengali number words to digits for robust extraction
+    const banglaNumberWords: { [key: string]: string } = {
+      'এক': '1', 'একটি': '1', 'একটা': '1', 'one': '1',
+      'দুই': '2', 'দুইটি': '2', 'দুইটা': '2', 'দুটি': '2', 'two': '2',
+      'তিন': '3', 'তিনটি': '3', 'তিনটা': '3', 'three': '3',
+      'চার': '4', 'চারটি': '4', 'চারটা': '4', 'four': '4',
+      'পাঁচ': '5', 'পাঁচটি': '5', 'পাঁচটা': '5', 'five': '5',
+      'ছয়': '6', 'ছয়': '6', 'ছয়টি': '6', 'ছয়টি': '6', 'ছয়টা': '6', 'ছয়টা': '6', 'six': '6',
+      'সাত': '7', 'সাতটি': '7', 'সাতটা': '7', 'seven': '7',
+      'আট': '8', 'আটটি': '8', 'আটটা': '8', 'eight': '8',
+      'নয়': '9', 'নয়': '9', 'নয়টি': '9', 'নয়টি': '9', 'নয়টা': '9', 'নয়টা': '9', 'nine': '9',
+      'দশ': '10', 'দশটি': '10', 'দশটা': '10', 'ten': '10'
+    };
+
+    for (const [word, num] of Object.entries(banglaNumberWords)) {
+      const regex = new RegExp(word, 'gi');
+      cleanText = cleanText.replace(regex, num);
+    }
+
+    // Convert thousand keywords to numbers (e.g. "২০ হাজার" -> "20 হাজার" -> "20000", "20k" -> "20000")
+    cleanText = cleanText.replace(/(\d+)\s*(?:হজার|হাজার|thousand|k|০০০)/gi, (match, num) => {
+      return String(Number(num) * 1000);
+    });
       
     // Regex for Rent (e.g. look for 4-5 digit numbers, or words near vara/rent/হলো)
     const rentRegex = /(?:ভাড়া|ভাড়ায়|ভাড়া হলো|ভাড়া হচ্ছ|vara|rent|amount|taka|টাকা)\s*(?:হলো|is)?\s*(\d{4,5})/i;
@@ -134,8 +160,8 @@ export const generateListingDescription = async (
       }
     }
     
-    // Regex for Bedrooms (e.g. "তিন রুম", "২টি বেড", "3 room")
-    const bedRegex = /(\d+)\s*(?:রুম|বেড|room|bed)/i;
+    // Regex for Bedrooms (e.g. "5টি বেডরুম", "3 room")
+    const bedRegex = /(\d+)\s*(?:টি\s*)?(?:বেডরুম|রুম|বেড|room|bed)/i;
     const bedMatch = cleanText.match(bedRegex);
     if (bedMatch) {
       extBed = Number(bedMatch[1]);
@@ -145,8 +171,8 @@ export const generateListingDescription = async (
       else if (/এক\s*রুম|one\s*room|একটি\s*রুম/i.test(cleanText)) extBed = 1;
     }
     
-    // Regex for Bathrooms
-    const bathRegex = /(\d+)\s*(?:বাথরুম|বাথ|bath)/i;
+    // Regex for Bathrooms (e.g. "3টা বাথরুম")
+    const bathRegex = /(\d+)\s*(?:টি\s*|টা\s*)?(?:বাথরুম|বাথ|bath)/i;
     const bathMatch = cleanText.match(bathRegex);
     if (bathMatch) {
       extBath = Number(bathMatch[1]);
@@ -156,13 +182,19 @@ export const generateListingDescription = async (
     }
 
     const finalRent = extRent || metadata.rentAmount || 0;
-    const finalBed = extBed || (metadata.bedrooms && metadata.bedrooms !== 2 ? metadata.bedrooms : 2);
-    const finalBath = extBath || (metadata.bathrooms && metadata.bathrooms !== 2 ? metadata.bathrooms : 1);
+    const finalBed = extBed || metadata.bedrooms || 2;
+    const finalBath = extBath || metadata.bathrooms || 1;
     const finalAddress = metadata.address || 'Thakurgaon Sadar, Thakurgaon';
 
     // Construct a beautiful HTML/Markdown output dynamically
     const fallbackTitle = metadata.title || `ঠাকুরগাঁও সদরে সুন্দর ${finalBed} বেডের ফ্ল্যাট ভাড়া (Premium Apartment)`;
-    const fallbackDescription = `### 🏠 ঠাকুরগাঁওয়ে সুপরিসর বাসা ভাড়া\n\n**ঠিকানা/লোকেশন:** ${finalAddress}\n\n**বাসার বিবরণ ও সুযোগ-সুবিধাসমূহ:**\nবাসাটিতে রয়েছে ${finalBed}টি চমৎকার শোবার ঘর (Bedrooms) এবং ${finalBath}টি বাথরুম। রুমগুলো অত্যন্ত আলো-বাতাসপূর্ণ এবং খোলামেলা পরিবেশে অবস্থিত। ফ্যামিলি বা ব্যাচেলরদের থাকার জন্য নিরিবিলি ও নিরাপদ পরিবেশ।\n\n- **মাসিক ভাড়া:** ৳${finalRent} BDT (আলোচনা সাপেক্ষ)\n- **অ্যাডভান্সড ডিপোজিট:** আলোচনা সাপেক্ষ\n- **ব্যাচেলর গ্রহণযোগ্যতা:** ${metadata.isBachelorAllowed ? 'হ্যাঁ' : 'না'}\n\n**আশেপাশের বিশেষ সুবিধা:**\n- ২৪ ঘণ্টা নিরবচ্ছিন্ন পানি ও বিদ্যুৎ সুবিধা\n- নিরাপদ পার্কিং স্পেস\n- মসজিদ, বাজার ও যাতায়াত ব্যবস্থার খুব কাছে\n\nভাড়া নিতে আগ্রহী হলে নিচের **সরাসরি কল** অথবা **হোয়াটসঅ্যাপ চ্যাট** বাটনে ক্লিক করে ল্যান্ডলর্ডের সাথে যোগাযোগ করুন।`;
+    
+    // Include amenities dynamically if they are passed in metadata
+    const amenitiesText = metadata.amenities && metadata.amenities.length > 0
+      ? `\n\n**সুবিধাসমূহ:**\n${metadata.amenities.map(a => `- ${a}`).join('\n')}`
+      : '\n\n**সুবিধাসমূহ:**\n- ২৪ ঘণ্টা নিরবচ্ছিন্ন পানি ও বিদ্যুৎ সুবিধা\n- নিরাপদ পার্কিং স্পেস\n- মসজিদ, বাজার ও যাতায়াত ব্যবস্থার খুব কাছে';
+
+    const fallbackDescription = `### 🏠 ঠাকুরগাঁওয়ে সুপরিসর বাসা ভাড়া\n\n**ঠিকানা/লোকেশন:** ${finalAddress}\n\n**বাসার বিবরণ ও সুযোগ-সুবিধাসমূহ:**\nবাসাটিতে রয়েছে ${finalBed}টি চমৎকার শোবার ঘর (Bedrooms) এবং ${finalBath}টি বাথরুম। রুমগুলো অত্যন্ত আলো-বাতাসপূর্ণ এবং খোলামেলা পরিবেশে অবস্থিত। ফ্যামিলি বা ব্যাচেলরদের থাকার জন্য নিরিবিলি ও নিরাপদ পরিবেশ।\n\n- **মাসিক ভাড়া:** ৳${finalRent} BDT (আলোচনা সাপেক্ষ)\n- **অ্যাডভান্সড ডিপোজিট:** আলোচনা সাপেক্ষ\n- **ব্যাচেলর গ্রহণযোগ্যতা:** ${metadata.isBachelorAllowed ? 'হ্যাঁ' : 'না'}${amenitiesText}\n\nভাড়া নিতে আগ্রহী হলে নিচের **সরাসরি কল** অথবা **হোয়াটসঅ্যাপ চ্যাট** বাটনে ক্লিক করে ল্যান্ডলর্ডের সাথে যোগাযোগ করুন।`;
 
     return {
       title: fallbackTitle,
@@ -198,7 +230,7 @@ export const parseNaturalLanguageQuery = async (
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = `
       You are the AI Recommendation Assistant for RentWise AI, a property rental platform in Bangladesh.

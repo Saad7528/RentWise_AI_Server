@@ -8,7 +8,7 @@ const router = Router();
 // 1. AI Description and Title Generator
 router.post('/generate', authenticate, async (req: Request, res: Response) => {
   try {
-    const { title, rentAmount, category, bedrooms, bathrooms, address, isBachelorAllowed, imagesBase64, description } = req.body;
+    const { title, rentAmount, category, bedrooms, bathrooms, address, isBachelorAllowed, imagesBase64, description, amenities } = req.body;
 
     // Strict validation ONLY when no description draft is provided to polish
     if (!description && (!rentAmount || !category || !bedrooms || !bathrooms || !address)) {
@@ -25,6 +25,7 @@ router.post('/generate', authenticate, async (req: Request, res: Response) => {
         address: address || '',
         isBachelorAllowed: isBachelorAllowed === true || isBachelorAllowed === 'true',
         description,
+        amenities: Array.isArray(amenities) ? amenities : undefined,
       },
       imagesBase64
     );
