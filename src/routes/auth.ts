@@ -103,8 +103,8 @@ router.post('/google', async (req: Request, res: Response) => {
     // 4. Set the Better Auth cookie
     res.cookie('better-auth.session_token', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       expires: expiresAt,
       path: '/'
     });
@@ -194,8 +194,8 @@ router.post('/demo', async (req: Request, res: Response) => {
     // Cookie parameters matches Better Auth cookie name
     res.cookie('better-auth.session_token', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
+      sameSite: 'none',
       expires: expiresAt,
       path: '/'
     });
@@ -241,7 +241,7 @@ router.post('/logout', async (req: Request, res: Response) => {
       await Session.deleteOne({ token });
     }
 
-    res.clearCookie('better-auth.session_token', { path: '/' });
+    res.clearCookie('better-auth.session_token', { path: '/', sameSite: 'none', secure: true });
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
