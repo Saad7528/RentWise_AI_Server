@@ -5,6 +5,12 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+// Static division to districts mapping for geographical filtering
+const DIVISION_DISTRICTS: { [key: string]: string[] } = {
+  'Dhaka': ['Dhaka'],
+  'Rangpur': ['Thakurgaon']
+};
+
 // 1. Get properties list (Explore / rentals) with filtering, sorting, and pagination
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -20,6 +26,7 @@ router.get('/', async (req: Request, res: Response) => {
       lat,
       lng,
       radius,
+      division,
       district,
       thana,
       neighborhood,
@@ -33,6 +40,13 @@ router.get('/', async (req: Request, res: Response) => {
     const addressFilters: any[] = [];
     if (district) {
       addressFilters.push({ address: { $regex: String(district), $options: 'i' } });
+    } else if (division) {
+      const divisionDistricts = DIVISION_DISTRICTS[String(division)];
+      if (divisionDistricts && divisionDistricts.length > 0) {
+        addressFilters.push({
+          $or: divisionDistricts.map(d => ({ address: { $regex: d, $options: 'i' } }))
+        });
+      }
     }
     if (thana) {
       addressFilters.push({ address: { $regex: String(thana), $options: 'i' } });
