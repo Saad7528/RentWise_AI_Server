@@ -19,16 +19,19 @@ RentWise AI is a complete, production-ready Full Stack Web Application that tran
 * **Ask AI (Conversational Agent):** An intelligent, context-aware chatbot that understands complex natural language prompts. It dynamically parses prompts into structured MongoDB query parameters (e.g., "Find bachelor apartments in Masterpara, Thakurgaon under 8000 BDT") and filters results instantly.
 * **Smart Suggestion Engine:** Analyzes current listing availability and user queries to suggest the most optimal matching rentals.
 * **Audio Voice Search:** Users can click the microphone button on the search bars. A glowing red pulsing recording animation captures user speech, translates it to text, and parses it for matching properties.
+* **Robust Bengali Fallback Parser:** Integrated a robust, rule-based backup parser in the backend to extract search parameters (e.g., matching Bengali stop-words like `ব্যাচেলরদের`, `জন্য`, `সকল`, `ধরনের`, `দেখাও`) to ensure 100% correct filters even when Gemini API is restricted or offline.
 
 ### 📍 2. Advanced Geospatial Google Map Integration
 * **Radius-Based Searching:** Click anywhere on the map to drop a **red marker pin** and search for matching flats within a **2km to 20km dynamic radius**.
-* **One-Click Route Direction:** View listing coordinates on the map and click "Get Directions" to open a pre-calculated route directly on the official Google Maps application.
+* **Use My Location GPS Tracking:** Click "আমার বর্তমান অবস্থান" in one click to detect your physical browser GPS coordinates, center the map on your location, and instantly query matching properties within 2-20km search radii.
+* **One-Click Route Direction:** View listing coordinates on the map and click "গুগল ম্যাপস ডিরেকশন" button to open a pre-calculated route direction directly in the official Google Maps application/web.
 * **Map Picker for Listing Posting:** Landlords can easily pinpoint the exact location of their property on the map while creating a listing, generating latitude/longitude coordinates automatically.
 
 ### ⚙️ 3. Dynamic Filter & Search Suite
 * **Geographical Cascade Selectors:** Select Division ➡️ District ➡️ Thana ➡️ Neighborhood dynamically, matching pre-configured Bangladesh local regions.
 * **Specific Parameters:** Filter by price range, number of bedrooms, bathrooms, and landlord restrictions (e.g., Bachelor allowed, Family only).
 * **Advanced Sorting:** Sort properties dynamically by price (low to high, high to low), date posted (newest, oldest), and relevance.
+* **Dynamic Pagination & Total Results Count:** Shows properties shown on the current page alongside the total matching count dynamically (e.g., "৮টি দেখানো হচ্ছে (মোট ৩০টির মধ্যে)") for better UX context.
 
 ### 🛡️ 4. Full Authentication & Moderation System
 * **Real Google OAuth Sign-In:** Authenticates users via the official **Google Identity Services (GIS)**, securely verifying token credentials on the backend.
