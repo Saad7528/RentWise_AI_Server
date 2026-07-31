@@ -32,7 +32,7 @@ export const generateListingDescription = async (
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
 
     const prompt = `
       You are an expert real estate copywriter in Bangladesh. Based on the following property details, draft description (which might be raw speech-to-text text in Bangla/English), and uploaded images, generate a high-converting listing.
@@ -230,7 +230,7 @@ export const parseNaturalLanguageQuery = async (
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
 
     const prompt = `
       You are the AI Recommendation Assistant for RentWise AI, a property rental platform in Bangladesh.
